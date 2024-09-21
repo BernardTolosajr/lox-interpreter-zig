@@ -1,0 +1,5 @@
+var lang = "lox";
+// this is a long comment!
+"iam a string literals!"
+!=
+
