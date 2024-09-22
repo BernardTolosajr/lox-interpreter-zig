@@ -2,4 +2,7 @@ var lang = "lox";
 // this is a long comment!
 "iam a string literals!"
 !=
+123
+12.32
+ab
 

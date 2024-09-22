@@ -1,6 +1,11 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
 
+const PeekResult = struct {
+    char: u8,
+    index: u32,
+};
+
 const TokenType = enum {
     left_paren,
     righ_paren,
@@ -176,10 +181,12 @@ pub fn main() !void {
             '"' => {
                 const ch = peekAhead(source, current);
                 if (ch) |v| {
-                    if (v == '"') {
-                        std.debug.print("adding token: {} \n", .{TokenType.string});
-                        try tokens.append(Token.init(TokenType.string, c, 1, ""));
-                        continue;
+                    if (v.char == '"') {
+                        const offset = v.index - current;
+                        const literal = source[current + 1 .. current + offset]; // grab it
+                        std.debug.print("current:{d} index:{d} offset:{d} \n", .{ current, v.index, offset });
+                        std.debug.print("adding token: {} literal: {s}\n", .{ TokenType.string, literal });
+                        try tokens.append(Token.init(TokenType.string, c, 1, literal));
                     }
                 } else {
                     std.debug.print("null: {s} current: {d} \n", .{ source, start });
@@ -187,10 +194,27 @@ pub fn main() !void {
                 }
             },
             else => {
+                // catch all character
+                if (isDigit(c)) {
+                    // TODO: get number
+                    //number(source, current);
+                }
                 continue;
             },
         }
     }
+}
+
+pub fn isDigit(c: u8) bool {
+    return switch (c) {
+        '0'...'9' => true,
+        else => false,
+    };
+}
+
+pub fn number(source: []u8, start: u32) void {
+    const c = peekAhead(source, start).?;
+    std.debug.print("source: number:{} \n", .{c.char});
 }
 
 pub fn peek(source: []u8, current: u32) ?u8 {
@@ -202,17 +226,22 @@ pub fn peek(source: []u8, current: u32) ?u8 {
     return null;
 }
 
-pub fn peekAhead(source: []u8, start: u32) ?u8 {
-    return while (peek(source, start).? != '\n') {
-        const ch = peek(source, start).?;
+pub fn peekAhead(source: []u8, start: u32) ?PeekResult {
+    var current = start + 1; // advance 1 character ahead
+    return while (true) : (current += 1) {
+        const ch = peek(source, current).?;
         if (ch == '"') {
-            std.debug.print("found string literal: {u} \n", .{ch});
-            break ch;
+            std.debug.print("got string: {u} current: {d}\n", .{ ch, current });
+            break PeekResult{ .char = ch, .index = current };
         }
         if (ch == '/') {
             std.debug.print("found slash /: {u} \n", .{ch});
-            break ch;
+            break PeekResult{ .char = ch, .index = current };
         }
+        if (isDigit(ch)) {
+            break PeekResult{ .char = ch, .index = current };
+        }
+        if (ch == '\n') break null;
     } else null;
 }
 
@@ -220,20 +249,7 @@ pub fn match(expected: u8, lexeme: ?u8) bool {
     return expected == lexeme.?;
 }
 
-test "text next lexeme" {
-    var content = [2]u8{ '!', '=' };
-    var start: u32 = 0;
-    var current: u32 = 0;
-    const source = content[0..2];
-    while (current < 1) {
-        start = current;
-        current += 1;
-        const c = source[start..current];
-        switch (c[0]) {
-            '!' => {
-                try std.testing.expectEqual(true, match('=', peek(source, current)));
-            },
-            else => {},
-        }
-    }
+test "isdigit" {
+    const d = isDigit('1');
+    try std.testing.expectEqual(true, d);
 }
